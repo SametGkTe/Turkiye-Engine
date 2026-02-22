@@ -1,0 +1,79 @@
+name: Turkiye Engine Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1.5.1
+        with:
+          haxe-version: 4.3.4
+
+      - name: Install Libraries (hmm)
+        run: |
+          haxelib install hmm
+          haxelib run hmm setup
+          haxelib run hmm install
+        shell: cmd
+
+      - name: Build Windows
+        # project.hxp otomatik olarak algılanacaktır
+        run: haxelib run lime build windows -release
+        shell: cmd
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TurkiyeEngine-Windows
+          path: export/release/windows/bin
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1.5.1
+        with:
+          haxe-version: 4.3.4
+
+      - name: Setup Java (Android için gerekli)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Libraries (hmm)
+        run: |
+          haxelib install hmm
+          haxelib run hmm setup
+          haxelib run hmm install
+
+      - name: Configure Lime for Android
+        run: |
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_HOME/ndk-bundle
+          haxelib run lime config JAVA_HOME $JAVA_HOME
+
+      - name: Build Android (APK)
+        run: haxelib run lime build android -release
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TurkiyeEngine-Android
+          path: export/release/android/bin/app/build/outputs/apk/release/*.apk
